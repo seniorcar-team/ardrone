@@ -33,7 +33,7 @@ cv::Mat inv_Rt_Matrix = ( cv::Mat_<double>( 4,4 ) << 1.0,0.0,0.0,0.0, 0.0,1.0,0.
 //カメラ内部パラメータ
 cv::Mat cameraMatrix = ( cv::Mat_<double>( 3,3 ) << 553.627733, 0.000000, 317.448667, 0.000000, 550.558377, 122.189254, 0.000000, 0.000000, 1.000000);
 //歪み補正
-cv::Mat distCoeffs =   (cv::Mat_<double>(1, 5) << -0.519086, 0.331704, 0.013667, 0.002975, 0.000000);
+cv::Mat distCoeffs =   (cv::Mat_<double>(5, 1) << -0.519086, 0.331704, 0.013667, 0.002975, 0.000000);
 
 
 
@@ -44,9 +44,9 @@ cv::Mat distCoeffs =   (cv::Mat_<double>(1, 5) << -0.519086, 0.331704, 0.013667,
 void imageCallback(const sensor_msgs::Image::ConstPtr& msg){
 
     //回転ベクトル
-    cv::Mat r_vec = (cv::Mat_<double>(1,3) << 0.0,0.0,0.0);
+    cv::Mat r_vec = (cv::Mat_<double>(3,1) << 0.0,0.0,0.0);
     //並進ベクトル
-    cv::Mat t_vec = (cv::Mat_<double>(1,3) << 0.0,0.0,0.0);
+    cv::Mat t_vec = (cv::Mat_<double>(3,1) << 0.0,0.0,0.0);
     //回転行列
     cv::Mat rMatrix = (cv::Mat_<double>(3,3) << 0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0);
 
@@ -69,11 +69,11 @@ void imageCallback(const sensor_msgs::Image::ConstPtr& msg){
     for (int i=0; i<3; i++ ){
         for(int j=0; j<3; j++){
 
-            Rt_Matrix.at<double>(i*4+j) = rMatrix.at<double>(i*3+j);
+            Rt_Matrix.at<double>(i,j) = rMatrix.at<double>(i,j);
         }
     }
     for (int i=0; i<3; i++ ){
-            Rt_Matrix.at<double>(i*4+3) = t_vec.at<double>(i);
+            Rt_Matrix.at<double>(i,3) = t_vec.at<double>(i,1);
     }
 
 
