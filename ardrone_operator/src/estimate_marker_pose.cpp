@@ -23,7 +23,7 @@ std::vector<Eigen::Matrix4d> EstimateMarkerPose::estimateMarkersPose(cv::Mat& in
     cv::aruco::detectMarkers(input_image, dictionary, corners, ids);
 
     std::vector<cv::Vec3d> rotation_vectors, translation_vectors;
-    std::vector<cv::Mat> rotation_matrixes;
+    std::vector<cv::Mat> rotation_matrixes(ids.size());
 
     std::vector<Eigen::Matrix4d> rt_transform_matrixes(ids.size(),Eigen::Matrix4d::Zero());
 
