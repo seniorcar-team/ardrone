@@ -40,38 +40,35 @@ std::vector<Eigen::Matrix4d> EstimateMarkerPose::estimateMarkersPose(cv::Mat& in
             std::cout << translation_vectors[i] << std::endl;
             //rotation vectors to rotation matrixes
             cv::Mat rotaion_vector(rotation_vectors[i]);
-            // cv::Rodrigues(rotaion_vector, rotation_matrixes[i]);
+            cv::Rodrigues(rotaion_vector, rotation_matrixes[i]);
             std::cout << "66666666666666666666" << std::endl;
             // draw axis for each marker
             cv::aruco::drawAxis(draw_image_, camera_matrix, distortion_coefficients, rotation_vectors[i], translation_vectors[i], 0.1);
 
             //create transform_matrix
-            // cv::Mat translation_vector = (cv::Mat_<double>(3,1) << 0., 0., 0.);
-            // cv::Mat rotation_matrix = (cv::Mat_<double>(3,3) << 0., 0., 0.,  0., 0., 0.,  0., 0., 0.);
+            cv::Mat translation_vector = (cv::Mat_<double>(3,1) << 0., 0., 0.);
+            cv::Mat rotation_matrix = (cv::Mat_<double>(3,3) << 0., 0., 0.,  0., 0., 0.,  0., 0., 0.);
             // cv::Mat translation_vector;
             // cv::Mat rotation_matrix;
-            // Eigen::Matrix4d rt_transform_matrix = Eigen::Matrix4d::Zero();
+            Eigen::Matrix4d rt_transform_matrix = Eigen::Matrix4d::Zero();
 
-            // translation_vector = translation_vectors[i];
-            // rotation_matrix = rotation_matrixes[i];
+            translation_vector = translation_vectors[i];
+            rotation_matrix = rotation_matrixes[i];
             // std::cout << "7777777777777777777" << std::endl;
             
-            // rt_transform_matrix(3,3) = 1.;
-            // for(int j = 0; j < 3; j++)
-            // {
-            //     for(int k = 0; k < 3; k++)
-            //     {
-            //         rt_transform_matrix(j,k) = rotation_matrix.at<double>(j,k);
-            //     }
-            // }
-            // for(int l = 0; l < 3; l++)
-            // {
-            //     rt_transform_matrix(l,3) = translation_vector.at<double>(l,1);
-            // }
-            // rt_transform_matrixes[i] = rt_transform_matrix;
-            // std::cout << rt_transform_matrixes[i] << std::endl;
+            rt_transform_matrix(3,3) = 1.;
+            for(int j = 0; j < 3; j++){
+                 for(int k = 0; k < 3; k++){
+                     rt_transform_matrix(j,k) = rotation_matrix.at<double>(j,k);
+                }
+            }
+            for(int l = 0; l < 3; l++){
+                 rt_transform_matrix(l,3) = translation_vector.at<double>(l,0);
+            }
+            rt_transform_matrixes[i] = rt_transform_matrix;
+            std::cout << rt_transform_matrixes[i] << std::endl;
         }
     }
-    // cv::imshow("out", draw_image_);
+    cv::imshow("out", draw_image_);
     return rt_transform_matrixes;
 }
