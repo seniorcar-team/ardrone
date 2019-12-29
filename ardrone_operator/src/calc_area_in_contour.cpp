@@ -24,8 +24,9 @@ bool CalcAreaInContour::calcCentroidInContour(cv::Mat& image, cv::Point2f& centr
 {
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(image, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-    double max_area = 0;
-    int max_id = 0;
+    double max_area = 5.;
+    int max_id = -1;
+if(contours.size() > 0){
     for(int k = 0; k < contours.size(); k++)
     {
         double area = contourArea(contours.at(k));
@@ -35,20 +36,22 @@ bool CalcAreaInContour::calcCentroidInContour(cv::Mat& image, cv::Point2f& centr
             max_id = k;
         }
     }
+}
 
-    if (max_id  > 0)
+    if (max_id  >= 0)
     {
         cv::Moments mu = moments( contours[max_id]);
         centroid = cv::Point2f( mu.m10/mu.m00 , mu.m01/mu.m00 );
         //重心点の表示
         cv::circle( image, centroid, 4, cv::Scalar(100), 2, 4);
+	return true;
     }
     else
     {
         return false;
     }
     
-    return true;
+    
 }
 
 

@@ -18,7 +18,7 @@
 #include <iostream>
 
 
-cv::Mat track_image = cv::Mat::zeros(cv::Size(480,320), CV_8UC3);
+cv::Mat track_image = cv::Mat::zeros(cv::Size(640,480), CV_8UC3);
 
 bool first_flag = true;
 
@@ -75,8 +75,11 @@ void ReceiveMotion::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
     bool is_detected = CalcAreaInContour::calcCentroidInContour(extracted_image, marker_centroid);
 
     std::vector<double> target_points(2.,0.);
-    if(is_detected)
+
+    if(is_detected == 1)
     {
+
+std::cout << "is_detected:" << is_detected <<std::endl;
 
 
 
@@ -85,8 +88,25 @@ void ReceiveMotion::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
         displacement[1] = marker_centroid.y - image_center.y;
         std::cout << marker_centroid << std::endl;
         std::cout << displacement << std::endl;
-        target_points[0] = displacement[0]/600.0;
-        target_points[1] = -displacement[1]/600.0;
+        target_points[0] = displacement[0]/100.0;
+        target_points[1] = -displacement[1]/100.0;
+
+if(first_flag ==false){
+  
+cv::circle( track_image, marker_centroid, 4, cv::Scalar(50,50,255), 2, -1);
+
+    std::string cont_x = std::to_string(target_points[0]);
+    std::string cont_y = std::to_string(target_points[1]);
+    std::ofstream flightfile;
+flightfile.open("/home/seniorcar/data.txt",std::ios::app);
+
+    flightfile << "goto " << cont_x << " " << cont_y << " 0 0" << std::endl;
+
+     sensor_msgs::ImagePtr line_img_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_image).toImageMsg();
+    line_image_pub_.publish(line_img_msg);
+
+}
+
     }
 
     sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", extracted_image).toImageMsg();
@@ -98,19 +118,7 @@ void ReceiveMotion::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
     cmd_msg_.data[3] = 0.0;
     //cmd_pub_.publish(cmd_msg_);
 
-    track_image.at<cv::Vec3b>(marker_centroid.y,marker_centroid.x)[0] = 50;
-    track_image.at<cv::Vec3b>(marker_centroid.y,marker_centroid.x)[1] = 50;
-    track_image.at<cv::Vec3b>(marker_centroid.y,marker_centroid.x)[2] = 255;
-
-    std::string cont_x = std::to_string(target_points[0]);
-    std::string cont_y = std::to_string(target_points[1]);
-    std::ofstream flightfile("data.txt", std::ios::app);
-
-    flightfile << "goto " << cont_x << " " << cont_y << " 0 0" << std::endl;
-
-     sensor_msgs::ImagePtr line_img_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_image).toImageMsg();
-    line_image_pub_.publish(line_img_msg);
-
+  
 
     
 }
@@ -122,18 +130,21 @@ int main(int argc, char** argv){
 
     if (first_flag == true){
         first_flag = false;
+std::cout << "initialize!" << std::endl;
 
-        std::ofstream flightfile("data.txt");
+        std::ofstream flightfile;
+flightfile.open("/home/seniorcar/data.txt",std::ios::out);
 
         flightfile << "autoInit 500 800 4000 0.5" << std::endl;
 
-        std::ofstream flightfile_add("data.txt",std::ios::app);
+        std::ofstream flightfile_add;
+flightfile_add.open("/home/seniorcar/data.txt",std::ios::app);
 
-        flightfile_add << "setReference $POSE$" << std::endl;
-        flightfile_add << "setInitialReachDist 0.2" << std::endl;
-        flightfile_add << "setStayWithinDist 0.3" << std::endl;
-        flightfile_add << "setStayTime 3" << std::endl;
-        flightfile_add << "lockScaleFP" << std::endl;
+        //flightfile_add << "setReference $POSE$" << std::endl;
+        //flightfile_add << "setInitialReachDist 0.2" << std::endl;
+        //flightfile_add << "setStayWithinDist 0.3" << std::endl;
+        //flightfile_add << "setStayTime 3" << std::endl;
+        //flightfile_add << "lockScaleFP" << std::endl;
 
     }
 
