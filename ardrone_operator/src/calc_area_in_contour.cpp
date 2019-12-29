@@ -50,3 +50,6 @@ bool CalcAreaInContour::calcCentroidInContour(cv::Mat& image, cv::Point2f& centr
     
     return true;
 }
+
+
+

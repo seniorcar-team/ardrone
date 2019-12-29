@@ -1,4 +1,4 @@
- /**
+/**
  *  This file is part of tum_ardrone.
  *
  *  Copyright 2012 Jakob Engel <jajuengel@gmail.com> (Technical University of Munich)
@@ -17,9 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with tum_ardrone.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
- 
- 
+
 #include "ControlNode.h"
 #include "ros/ros.h"
 #include "ros/callback_queue.h"
@@ -43,15 +41,14 @@ using namespace std;
 
 pthread_mutex_t ControlNode::logControl_CS = PTHREAD_MUTEX_INITIALIZER;
 
-
 ControlNode::ControlNode()
 {
-    control_channel = nh_.resolveName("cmd_vel");
-    dronepose_channel = nh_.resolveName("ardrone/predictedPose");
-    command_channel = nh_.resolveName("tum_ardrone/com");
-    takeoff_channel = nh_.resolveName("ardrone/takeoff");
-    land_channel = nh_.resolveName("ardrone/land");
-    toggleState_channel = nh_.resolveName("ardrone/reset");
+	control_channel = nh_.resolveName("cmd_vel");
+	dronepose_channel = nh_.resolveName("ardrone/predictedPose");
+	command_channel = nh_.resolveName("tum_ardrone/com");
+	takeoff_channel = nh_.resolveName("ardrone/takeoff");
+	land_channel = nh_.resolveName("ardrone/land");
+	toggleState_channel = nh_.resolveName("ardrone/reset");
 	goto_channel = nh_.resolveName("tum_ardrone/goto");
 
 	packagePath = ros::package::getPath("tum_ardrone");
@@ -60,13 +57,12 @@ ControlNode::ControlNode()
 	float valFloat;
 
 	ros::param::get("~minPublishFreq", val);
-	if(val.size()>0)
+	if (val.size() > 0)
 		sscanf(val.c_str(), "%f", &valFloat);
 	else
 		valFloat = 110;
 	minPublishFreq = valFloat;
-	cout << "set minPublishFreq to " << valFloat << "ms"<< endl;
-
+	cout << "set minPublishFreq to " << valFloat << "ms" << endl;
 
 	// other internal vars
 	logfileControl = 0;
@@ -75,13 +71,13 @@ ControlNode::ControlNode()
 
 	// channels
 	dronepose_sub = nh_.subscribe(dronepose_channel, 10, &ControlNode::droneposeCb, this);
-	vel_pub	   = nh_.advertise<geometry_msgs::Twist>(control_channel,1);
-	tum_ardrone_pub	   = nh_.advertise<std_msgs::String>(command_channel,50);
-	tum_ardrone_sub	   = nh_.subscribe(command_channel,50, &ControlNode::comCb, this);
-	takeoff_pub	   = nh_.advertise<std_msgs::Empty>(takeoff_channel,1);
-	land_pub	   = nh_.advertise<std_msgs::Empty>(land_channel,1);
-	toggleState_pub	   = nh_.advertise<std_msgs::Empty>(toggleState_channel,1);
-	goto_sub = nh_.subscribe(goto_channel,50, &ControlNode::gotoCb, this);
+	vel_pub = nh_.advertise<geometry_msgs::Twist>(control_channel, 1);
+	tum_ardrone_pub = nh_.advertise<std_msgs::String>(command_channel, 50);
+	tum_ardrone_sub = nh_.subscribe(command_channel, 50, &ControlNode::comCb, this);
+	takeoff_pub = nh_.advertise<std_msgs::Empty>(takeoff_channel, 1);
+	land_pub = nh_.advertise<std_msgs::Empty>(land_channel, 1);
+	toggleState_pub = nh_.advertise<std_msgs::Empty>(toggleState_channel, 1);
+	goto_sub = nh_.subscribe(goto_channel, 50, &ControlNode::gotoCb, this);
 
 	// services handler
 	setReference_ = nh_.advertiseService("drone_autopilot/setReference", &ControlNode::setReference, this);
@@ -96,14 +92,14 @@ ControlNode::ControlNode()
 	lockScaleFP_ = nh_.advertiseService("drone_autopilot/lockScaleFP", &ControlNode::lockScaleFP, this);
 
 	// internals
-	parameter_referenceZero = DronePosition(TooN::makeVector(0,0,0),0);
+	parameter_referenceZero = DronePosition(TooN::makeVector(0, 0, 0), 0);
 	parameter_MaxControl = 1;
 	parameter_InitialReachDist = 0.2;
 	parameter_StayWithinDist = 0.5;
 	parameter_StayTime = 2;
 	isControlling = false;
 	currentKI = NULL;
-	lastSentControl = ControlCommand(0,0,0,0);
+	lastSentControl = ControlCommand(0, 0, 0, 0);
 
 	// create controller
 	controller = DroneController();
@@ -112,7 +108,6 @@ ControlNode::ControlNode()
 
 ControlNode::~ControlNode()
 {
-
 }
 
 pthread_mutex_t ControlNode::commandQueue_CS = PTHREAD_MUTEX_INITIALIZER;
@@ -123,21 +118,20 @@ void ControlNode::droneposeCb(const tum_ardrone::filter_stateConstPtr statePtr)
 
 	// as long as no KI present:
 	// pop next KI (if next KI present).
-	while(currentKI == NULL && commandQueue.size() > 0)
+	while (currentKI == NULL && commandQueue.size() > 0)
 		popNextCommand(statePtr);
 
 	// if there is no current KI now, we obviously have no current goal -> send drone hover
-	if(currentKI != NULL)
+	if (currentKI != NULL)
 	{
 		// let current KI control.
 		this->updateControl(statePtr);
 	}
-	else if(isControlling)
+	else if (isControlling)
 	{
 		sendControlToDrone(hoverCommand);
 		ROS_DEBUG("Autopilot is Controlling, but there is no KI -> sending HOVER");
 	}
-
 
 	pthread_mutex_unlock(&commandQueue_CS);
 }
@@ -148,192 +142,183 @@ void ControlNode::popNextCommand(const tum_ardrone::filter_stateConstPtr statePt
 {
 	// should actually not happen., but to make shure:
 	// delete existing KI.
-	if(currentKI != NULL)
+	if (currentKI != NULL)
 	{
 		delete currentKI;
 		currentKI = NULL;
 	}
 
 	// read next command.
-	while(currentKI == NULL && commandQueue.size() > 0)
+	while (currentKI == NULL && commandQueue.size() > 0)
 	{
 		std::string command = commandQueue.front();
 		commandQueue.pop_front();
 		bool commandUnderstood = false;
 
 		// print me
-		ROS_INFO("executing command: %s",command.c_str());
+		ROS_INFO("executing command: %s", command.c_str());
 
 		int p;
 		char buf[100];
 		float parameters[10];
 
 		// replace macros
-		if((p = command.find("$POSE$")) != std::string::npos)
+		if ((p = command.find("$POSE$")) != std::string::npos)
 		{
-			snprintf(buf,100, "%.3f %.3f %.3f %.3f",statePtr->x,statePtr->y,statePtr->z,statePtr->yaw);
-			command.replace(p,6,buf);
+			snprintf(buf, 100, "%.3f %.3f %.3f %.3f", statePtr->x, statePtr->y, statePtr->z, statePtr->yaw);
+			command.replace(p, 6, buf);
 			reference_flag_ = true;
-			
 		}
-		if((p = command.find("$REFERENCE$")) != std::string::npos)
+		if ((p = command.find("$REFERENCE$")) != std::string::npos)
 		{
-			snprintf(buf,100, "%.3f %.3f %.3f %.3f",parameter_referenceZero.pos[0],parameter_referenceZero.pos[1],parameter_referenceZero.pos[2],parameter_referenceZero.yaw);
-			command.replace(p,11,buf);
+			snprintf(buf, 100, "%.3f %.3f %.3f %.3f", parameter_referenceZero.pos[0], parameter_referenceZero.pos[1], parameter_referenceZero.pos[2], parameter_referenceZero.yaw);
+			command.replace(p, 11, buf);
 		}
 
 		// -------- commands -----------
 		// autoInit
-		if(sscanf(command.c_str(),"autoInit %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		if (sscanf(command.c_str(), "autoInit %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
-			currentKI = new KIAutoInit(true,parameters[0],parameters[1],parameters[2],parameters[3],true);
-			currentKI->setPointers(this,&controller);
+			currentKI = new KIAutoInit(true, parameters[0], parameters[1], parameters[2], parameters[3], true);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
 		}
 
-		else if(sscanf(command.c_str(),"autoTakeover %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		else if (sscanf(command.c_str(), "autoTakeover %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
-			currentKI = new KIAutoInit(true,parameters[0],parameters[1],parameters[2],parameters[3],false);
-			currentKI->setPointers(this,&controller);
+			currentKI = new KIAutoInit(true, parameters[0], parameters[1], parameters[2], parameters[3], false);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
 		}
 
 		// takeoff
-		else if(command == "takeoff")
+		else if (command == "takeoff")
 		{
 			currentKI = new KIAutoInit(false);
-			currentKI->setPointers(this,&controller);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
 		}
 
 		// setOffset
-		else if(sscanf(command.c_str(),"setReference %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		else if (sscanf(command.c_str(), "setReference %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
-			parameter_referenceZero = DronePosition(TooN::makeVector(parameters[0],parameters[1],parameters[2]),parameters[3]);
+			parameter_referenceZero = DronePosition(TooN::makeVector(parameters[0], parameters[1], parameters[2]), parameters[3]);
 			commandUnderstood = true;
-			if(reference_flag_ == true)
+			if (reference_flag_ == true)
 			{
 				reference_flag_2 = true;
 			}
-			
 		}
 
 		// setMaxControl
-		else if(sscanf(command.c_str(),"setMaxControl %f",&parameters[0]) == 1)
+		else if (sscanf(command.c_str(), "setMaxControl %f", &parameters[0]) == 1)
 		{
 			parameter_MaxControl = parameters[0];
 			commandUnderstood = true;
 		}
 
 		// setInitialReachDist
-		else if(sscanf(command.c_str(),"setInitialReachDist %f",&parameters[0]) == 1)
+		else if (sscanf(command.c_str(), "setInitialReachDist %f", &parameters[0]) == 1)
 		{
 			parameter_InitialReachDist = parameters[0];
 			commandUnderstood = true;
 		}
 
 		// setStayWithinDist
-		else if(sscanf(command.c_str(),"setStayWithinDist %f",&parameters[0]) == 1)
+		else if (sscanf(command.c_str(), "setStayWithinDist %f", &parameters[0]) == 1)
 		{
 			parameter_StayWithinDist = parameters[0];
 			commandUnderstood = true;
 		}
 
 		// setStayTime
-		else if(sscanf(command.c_str(),"setStayTime %f",&parameters[0]) == 1)
+		else if (sscanf(command.c_str(), "setStayTime %f", &parameters[0]) == 1)
 		{
 			parameter_StayTime = parameters[0];
 			commandUnderstood = true;
 		}
 
 		// goto
-		else if(sscanf(command.c_str(),"goto %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		else if (sscanf(command.c_str(), "goto %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
 			currentKI = new KIFlyTo(
 				DronePosition(
-				TooN::makeVector(parameters[0],parameters[1],parameters[2]) + parameter_referenceZero.pos,
+					TooN::makeVector(parameters[0], parameters[1], parameters[2]) + parameter_referenceZero.pos,
 					parameters[3] + parameter_referenceZero.yaw),
 				parameter_StayTime,
 				parameter_MaxControl,
 				parameter_InitialReachDist,
-				parameter_StayWithinDist
-				);
-			currentKI->setPointers(this,&controller);
+				parameter_StayWithinDist);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
-
 		}
 
 		// moveBy
-		else if(sscanf(command.c_str(),"moveBy %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		else if (sscanf(command.c_str(), "moveBy %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
 			currentKI = new KIFlyTo(
 				DronePosition(
-				TooN::makeVector(parameters[0],parameters[1],parameters[2]) + controller.getCurrentTarget().pos,
+					TooN::makeVector(parameters[0], parameters[1], parameters[2]) + controller.getCurrentTarget().pos,
 					parameters[3] + controller.getCurrentTarget().yaw),
 				parameter_StayTime,
 				parameter_MaxControl,
 				parameter_InitialReachDist,
-				parameter_StayWithinDist
-				);
-			currentKI->setPointers(this,&controller);
+				parameter_StayWithinDist);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
-
 		}
 
 		// moveByRel
-		else if(sscanf(command.c_str(),"moveByRel %f %f %f %f",&parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
+		else if (sscanf(command.c_str(), "moveByRel %f %f %f %f", &parameters[0], &parameters[1], &parameters[2], &parameters[3]) == 4)
 		{
 			currentKI = new KIFlyTo(
 				DronePosition(
-				TooN::makeVector(parameters[0]+statePtr->x,parameters[1]+statePtr->y,parameters[2]+statePtr->z),
+					TooN::makeVector(parameters[0] + statePtr->x, parameters[1] + statePtr->y, parameters[2] + statePtr->z),
 					parameters[3] + statePtr->yaw),
 				parameter_StayTime,
 				parameter_MaxControl,
 				parameter_InitialReachDist,
-				parameter_StayWithinDist
-				);
-			currentKI->setPointers(this,&controller);
+				parameter_StayWithinDist);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
-
 		}
 
 		// land
-		else if(command == "land")
+		else if (command == "land")
 		{
 			currentKI = new KILand();
-			currentKI->setPointers(this,&controller);
+			currentKI->setPointers(this, &controller);
 			commandUnderstood = true;
 		}
 
 		// setScaleFP
-		else if(command == "lockScaleFP")
+		else if (command == "lockScaleFP")
 		{
 			publishCommand("p lockScaleFP");
 			commandUnderstood = true;
 		}
 
-		if(!commandUnderstood)
+		if (!commandUnderstood)
 			ROS_INFO("unknown command, skipping!");
 	}
-
 }
 
 void ControlNode::comCb(const std_msgs::StringConstPtr str)
 {
 	// only handle commands with prefix c
-	if(str->data.length() > 2 && str->data.substr(0,2) == "c ")
+	if (str->data.length() > 2 && str->data.substr(0, 2) == "c ")
 	{
-		std::string cmd =str->data.substr(2,str->data.length()-2);
+		std::string cmd = str->data.substr(2, str->data.length() - 2);
 
-		if(cmd.length() == 4 && cmd.substr(0,4) == "stop")
+		if (cmd.length() == 4 && cmd.substr(0, 4) == "stop")
 		{
 			stopControl();
 		}
-		else if(cmd.length() == 5 && cmd.substr(0,5) == "start")
+		else if (cmd.length() == 5 && cmd.substr(0, 5) == "start")
 		{
 			startControl();
 		}
-		else if(cmd.length() == 13 && cmd.substr(0,13) == "clearCommands")
+		else if (cmd.length() == 13 && cmd.substr(0, 13) == "clearCommands")
 		{
 			clearCommands();
 		}
@@ -346,7 +331,7 @@ void ControlNode::comCb(const std_msgs::StringConstPtr str)
 	}
 
 	// global command: toggle log
-	if(str->data.length() == 9 && str->data.substr(0,9) == "toggleLog")
+	if (str->data.length() == 9 && str->data.substr(0, 9) == "toggleLog")
 	{
 		this->toogleLogging();
 	}
@@ -354,25 +339,26 @@ void ControlNode::comCb(const std_msgs::StringConstPtr str)
 
 void ControlNode::gotoCb(const std_msgs::Float32MultiArrayConstPtr goto_msg)
 {
-	if(currentKI == NULL && reference_flag_2 ==true)
+	if (currentKI != NULL)
 	{
-		if(goto_msg->data.size() == 4)
-		{
-			currentKI = new KIFlyTo(
-					DronePosition(
-					TooN::makeVector(goto_msg->data[0],goto_msg->data[1],goto_msg->data[2]) + parameter_referenceZero.pos,
-						goto_msg->data[3] + parameter_referenceZero.yaw),
-					parameter_StayTime,
-					parameter_MaxControl,
-					parameter_InitialReachDist,
-					parameter_StayWithinDist
-					);
-				currentKI->setPointers(this,&controller);
-				std::cout << 'kasu'<< std::endl;
-				// commandUnderstood = true;
-		}
+		delete currentKI;
+		currentKI = NULL;
 	}
-	
+	if (reference_flag_2 == true)
+	{
+
+		currentKI = new KIFlyTo(
+			DronePosition(
+				TooN::makeVector(goto_msg->data[0], goto_msg->data[1], goto_msg->data[2]) + parameter_referenceZero.pos,
+				goto_msg->data[3] + parameter_referenceZero.yaw),
+			parameter_StayTime,
+			parameter_MaxControl,
+			parameter_InitialReachDist,
+			parameter_StayWithinDist);
+		currentKI->setPointers(this, &controller);
+		std::cout << 'kasu' << std::endl;
+		// commandUnderstood = true;
+	}
 }
 
 void ControlNode::Loop()
@@ -384,20 +370,19 @@ void ControlNode::Loop()
 	{
 
 		// -------------- 1. spin for 50ms, do main controlling part here. ---------------
-		while((ros::Time::now() - last) < ros::Duration(minPublishFreq / 1000.0))
+		while ((ros::Time::now() - last) < ros::Duration(minPublishFreq / 1000.0))
 			ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(minPublishFreq / 1000.0 - (ros::Time::now() - last).toSec()));
 		last = ros::Time::now();
 
-
 		// -------------- 2. send hover (maybe). ---------------
-		if(isControlling && getMS(ros::Time::now()) - lastControlSentMS > minPublishFreq)
+		if (isControlling && getMS(ros::Time::now()) - lastControlSentMS > minPublishFreq)
 		{
 			sendControlToDrone(hoverCommand);
 			ROS_WARN("Autopilot enabled, but no estimated pose received - sending HOVER.");
 		}
 
 		// -------------- 2. update info. ---------------
-		if((ros::Time::now() - lastStateUpdate) > ros::Duration(0.4))
+		if ((ros::Time::now() - lastStateUpdate) > ros::Duration(0.4))
 		{
 			reSendInfo();
 			lastStateUpdate = ros::Time::now();
@@ -436,7 +421,6 @@ void ControlNode::publishCommand(std::string c)
 	pthread_mutex_unlock(&tum_ardrone_CS);
 }
 
-
 void ControlNode::toogleLogging()
 {
 	// logging has yet to be integrated.
@@ -453,7 +437,7 @@ void ControlNode::sendControlToDrone(ControlCommand cmd)
 	// assume that while actively controlling, the above for will never be equal to zero, so i will never hover.
 	cmdT.angular.x = cmdT.angular.y = 0;
 
-	if(isControlling)
+	if (isControlling)
 	{
 		vel_pub.publish(cmdT);
 		lastSentControl = cmd;
@@ -464,17 +448,17 @@ void ControlNode::sendControlToDrone(ControlCommand cmd)
 
 void ControlNode::sendLand()
 {
-	if(isControlling)
+	if (isControlling)
 		land_pub.publish(std_msgs::Empty());
 }
 void ControlNode::sendTakeoff()
 {
-	if(isControlling)
+	if (isControlling)
 		takeoff_pub.publish(std_msgs::Empty());
 }
 void ControlNode::sendToggleState()
 {
-	if(isControlling)
+	if (isControlling)
 		toggleState_pub.publish(std_msgs::Empty());
 }
 void ControlNode::reSendInfo()
@@ -489,58 +473,64 @@ void ControlNode::reSendInfo()
 
 	DronePosition p = controller.getCurrentTarget();
 	TooN::Vector<4> e = controller.getLastErr();
-	double ea = sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
-	snprintf(buf,500,"u c %s (Queue: %d)\nCurrent: %s\nNext: %s\nTarget: (%.2f,  %.2f,  %.2f), %.1f\nError: (%.2f,  %.2f,  %.2f), %.1f (|.| %.2f)\nCont.: r %.2f, p %.2f, g %.2f, y %.2f",
-			isControlling ? "Controlling" : "Idle",
-			(int)commandQueue.size(),
-			currentKI == NULL ? "NULL" : currentKI->command.c_str(),
-			commandQueue.size() > 0 ? commandQueue.front().c_str() : "NULL",
-			p.pos[0],p.pos[1],p.pos[2],p.yaw,
-			e[0],e[1],e[2],e[3], ea,
-			lastSentControl.roll, lastSentControl.pitch, lastSentControl.gaz, lastSentControl.yaw);
+	double ea = sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
+	snprintf(buf, 500, "u c %s (Queue: %d)\nCurrent: %s\nNext: %s\nTarget: (%.2f,  %.2f,  %.2f), %.1f\nError: (%.2f,  %.2f,  %.2f), %.1f (|.| %.2f)\nCont.: r %.2f, p %.2f, g %.2f, y %.2f",
+			 isControlling ? "Controlling" : "Idle",
+			 (int)commandQueue.size(),
+			 currentKI == NULL ? "NULL" : currentKI->command.c_str(),
+			 commandQueue.size() > 0 ? commandQueue.front().c_str() : "NULL",
+			 p.pos[0], p.pos[1], p.pos[2], p.yaw,
+			 e[0], e[1], e[2], e[3], ea,
+			 lastSentControl.roll, lastSentControl.pitch, lastSentControl.gaz, lastSentControl.yaw);
 
 	publishCommand(buf);
 }
 
-void ControlNode::startControl() {
+void ControlNode::startControl()
+{
 	isControlling = true;
 	publishCommand("u l Autopilot: Start Controlling");
 	ROS_INFO("START CONTROLLING!");
 }
 
-void ControlNode::stopControl() {
+void ControlNode::stopControl()
+{
 	isControlling = false;
 	publishCommand("u l Autopilot: Stop Controlling");
 	ROS_INFO("STOP CONTROLLING!");
 }
 
-void ControlNode::updateControl(const tum_ardrone::filter_stateConstPtr statePtr) {
-	if (currentKI->update(statePtr) && commandQueue.size() > 0) {
+void ControlNode::updateControl(const tum_ardrone::filter_stateConstPtr statePtr)
+{
+	if (currentKI->update(statePtr) && commandQueue.size() > 0)
+	{
 		delete currentKI;
 		currentKI = NULL;
 	}
 }
 
-void ControlNode::clearCommands() {
+void ControlNode::clearCommands()
+{
 	pthread_mutex_lock(&commandQueue_CS);
-	commandQueue.clear();						// clear command queue.
-	controller.clearTarget();					// clear current controller target
-	if(currentKI != NULL) delete currentKI;	// destroy & delete KI.
+	commandQueue.clear();	 // clear command queue.
+	controller.clearTarget(); // clear current controller target
+	if (currentKI != NULL)
+		delete currentKI; // destroy & delete KI.
 	currentKI = NULL;
 	pthread_mutex_unlock(&commandQueue_CS);
 	publishCommand("u l Autopilot: Cleared Command Queue");
 	ROS_INFO("Cleared Command Queue!");
 }
 
-bool ControlNode::setReference(SetReference::Request& req, SetReference::Response& res)
+bool ControlNode::setReference(SetReference::Request &req, SetReference::Response &res)
 {
 	ROS_INFO("calling service setReference");
-	parameter_referenceZero = DronePosition(TooN::makeVector(req.x, req.y, req.z), req.heading);	
+	parameter_referenceZero = DronePosition(TooN::makeVector(req.x, req.y, req.z), req.heading);
 	res.status = true;
 	return true;
 }
 
-bool ControlNode::setMaxControl(SetMaxControl::Request& req, SetMaxControl::Response& res)
+bool ControlNode::setMaxControl(SetMaxControl::Request &req, SetMaxControl::Response &res)
 {
 	ROS_INFO("calling service setMaxControl");
 	parameter_MaxControl = req.speed;
@@ -548,7 +538,7 @@ bool ControlNode::setMaxControl(SetMaxControl::Request& req, SetMaxControl::Resp
 	return true;
 }
 
-bool ControlNode::setInitialReachDistance(SetInitialReachDistance::Request& req, SetInitialReachDistance::Response& res)
+bool ControlNode::setInitialReachDistance(SetInitialReachDistance::Request &req, SetInitialReachDistance::Response &res)
 {
 	ROS_INFO("calling service setInitialReachDistance");
 	parameter_InitialReachDist = req.distance;
@@ -556,47 +546,53 @@ bool ControlNode::setInitialReachDistance(SetInitialReachDistance::Request& req,
 	return true;
 }
 
-bool ControlNode::setStayWithinDistance(SetStayWithinDistance::Request& req, SetStayWithinDistance::Response& res) {
+bool ControlNode::setStayWithinDistance(SetStayWithinDistance::Request &req, SetStayWithinDistance::Response &res)
+{
 	ROS_INFO("calling service setStayWithinDistance");
 	parameter_StayWithinDist = req.distance;
 	res.status = true;
 	return true;
 }
 
-bool ControlNode::setStayTime(SetStayTime::Request& req, SetStayTime::Response& res) {
+bool ControlNode::setStayTime(SetStayTime::Request &req, SetStayTime::Response &res)
+{
 	ROS_INFO("calling service setStayTime");
 	parameter_StayTime = req.duration;
 	res.status = true;
 	return true;
 }
 
-bool ControlNode::start(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res) {
+bool ControlNode::start(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
 	ROS_INFO("calling service start");
 	this->startControl();
 	return true;
 }
 
-bool ControlNode::stop(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+bool ControlNode::stop(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+{
 	ROS_INFO("calling service stop");
 	this->stopControl();
 	return true;
 }
 
-bool ControlNode::clear(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+bool ControlNode::clear(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+{
 	ROS_INFO("calling service clearCommands");
 	this->clearCommands();
 	return true;
 }
 
-bool ControlNode::hover(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+bool ControlNode::hover(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+{
 	ROS_INFO("calling service hover");
 	this->sendControlToDrone(hoverCommand);
 	return true;
 }
 
-bool ControlNode::lockScaleFP(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+bool ControlNode::lockScaleFP(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+{
 	ROS_INFO("calling service lockScaleFP");
 	this->publishCommand("p lockScaleFP");
 	return true;
 }
-
