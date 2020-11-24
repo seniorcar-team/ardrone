@@ -80,6 +80,18 @@ $ docker attach test
 * [Docker上でROSチュートリアルをやってみた](https://qiita.com/yuki-shark/items/3e54af7140b755223c3e)
 * [Ubuntu 16.04LTSにROS Kineticをインストールする](https://qiita.com/proton_lattice/items/6b26ee3a4f84776db7b7)
 
+## Windows
+* windowsにdockerをinstallし，あとはdocker環境構築に従う．
+### Prerequisites
+* エディション：Windows 10 Home
+* バージョン：2004
+* OSビルド：19041以上
+
+### Docker install
+* バージョンアップデート：[Windows 10 Home でWSL2を使ってdockerを試してみた](http://yosshi.snowdrop.asia/2020/07/24/2551/)
+* dockerセットアップ：[Windows 10 Home で WSL 2 + Docker を使う](https://qiita.com/KoKeCross/items/a6365af2594a102a817b)
+* ↑でwslが認識されないとき：[Windows 10 用 Windows Subsystem for Linux のインストール ガイド](https://docs.microsoft.com/ja-jp/windows/wsl/install-win10)
+
 
 ## Demo
 ### ArUco Marker follow control
