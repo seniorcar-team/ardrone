@@ -64,7 +64,8 @@ $ docker commit work ros:kinetic-ardrone
 ```
 
 ### コンテナの作成、起動
-* コンテナの作成(GUIを使いたい場合)
+* コンテナの作成(GUIを使いたい場合)  
+追記：下記のWindows＞GUI有効化のやり方の方が簡単．
 ```
 $ xhost +
 $ docker run -it --net rosnet --env="DISPLAY" --env="QT_X11_NO_MITSHM=1" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" -v ~/kinetic:/kinetic --name test ros:kinetic-ardrone
@@ -91,6 +92,20 @@ $ docker attach test
 * バージョンアップデート：[Windows 10 Home でWSL2を使ってdockerを試してみた](http://yosshi.snowdrop.asia/2020/07/24/2551/)
 * dockerセットアップ：[Windows 10 Home で WSL 2 + Docker を使う](https://qiita.com/KoKeCross/items/a6365af2594a102a817b)
 * ↑でwslが認識されないとき：[Windows 10 用 Windows Subsystem for Linux のインストール ガイド](https://docs.microsoft.com/ja-jp/windows/wsl/install-win10)
+
+### コンテナ作成
+```
+$ docker run -it -v 'C:/Users/username/kinetic:/kinetic' --name work ros:kinetic
+```
+
+### GUI有効化
+* [Setting up ROS in Windows through Docker](https://jack-kawell.com/2019/09/11/setting-up-ros-in-windows-through-docker/)
+* windowsでXserverを使うため，VcXsrvをインストール：[VcXsrv Windows X Server](https://sourceforge.net/projects/vcxsrv/)
+* IPアドレスの設定：ardroneのWiFiに接続したときのip_addressを設定
+```
+echo 'export DISPLAY=ip_address:0.0' >> ~/.bashrc
+source ~/.bashrc
+```
 
 
 ## Demo
