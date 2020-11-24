@@ -5,6 +5,82 @@
 * ROS kinetic (ardrone_autonomy, tum_ardroneがkineticまでしか対応していない)
 * OpenCV 3.3.0
 
+## Build
+SDL/SDL.h: No such file or directory
+というエラーが出たとき。
+```
+$ sudo apt-get install libsdl1.2-dev
+```
+
+## Docker環境構築
+* Ubuntu18.04でROS kinetic環境をdockerで作る。
+### Docker install
+* 公式サイトに従ってインストール。
+公式サイト：[Get Docker Engine - Community for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+* dockerに権限を与えておく（sudoなしで実行できるようにする）と便利
+参考：[「Got permission denied while trying to connect to the Docker daemon socket」への対応](https://qiita.com/ashidaka/items/734856443f922ff175b1)
+### ROS kinetic環境構築
+* ROS kineticの入ったdocker imageを取得
+```
+$ docker pull ros:kinetic
+```
+* Dockerコンテナの作成  
+workのところは好きな名前  
+~/kinetic:/kineticの部分は、ホストディレクトリをマウントするためのコマンドで、（ホスト側のディレクトリ）:（docker環境内の任意のディレクトリ）
+```
+$ docker run -it -v ~/kinetic:/kinetic --name work ros:kinetic
+```
+* ROSのすべてのデスクトップ環境をインストール、環境設定
+コンテナ内で
+```
+$ apt update
+$ apt install ros-kinetic-desktop-full
+$ rosdep init
+$ rosdep update
+$ apt install python-rosinstall
+```
+* ワークスペースの作成
+```
+$ mkdir -p /kinetic/catkin_ws/src
+$ cd /kinetic/catkin_ws
+$ catkin_make
+```
+* 環境設定
+```
+$ echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
+$ echo "source /kinetic/catkin_ws/devel/setup.bash" >> ~/.bashrc
+```
+* ardroneパッケージ群のビルド
+マウントしたホスト側のディレクトリでgit cloneしたほうが、扱いやすい。
+```
+$ cd /kinetic/catkin_ws/src
+$ git clone https://github.com/yuya-onozuka/ardrone.git
+$ cd /kinetic/catkin_ws
+$ catkin_make
+```
+* Docker imageの作成
+```
+$ docker commit work ros:kinetic-ardrone
+```
+
+### コンテナの作成、起動
+* コンテナの作成(GUIを使いたい場合)
+```
+$ xhost +
+$ docker run -it --net rosnet --env="DISPLAY" --env="QT_X11_NO_MITSHM=1" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" -v ~/kinetic:/kinetic --name test ros:kinetic-ardrone
+```
+* コンテナの起動
+```
+$ docker start test
+$ docker attach test
+```
+
+### 参考
+* [ROS x Dockerのお勉強](http://robonchu.hatenablog.com/entry/2017/12/17/192649)
+* [Docker上でROSチュートリアルをやってみた](https://qiita.com/yuki-shark/items/3e54af7140b755223c3e)
+* [Ubuntu 16.04LTSにROS Kineticをインストールする](https://qiita.com/proton_lattice/items/6b26ee3a4f84776db7b7)
+
+
 ## Demo
 ### ArUco Marker follow control
 ArUco Markerにドローンを追従させる制御。
